@@ -25,7 +25,7 @@ async function main() {
       type: 'fuzzypath',
       name: 'filename',
       message: 'Select file',
-      itemType: 'any',
+      itemType: 'file',
       suffix: `*${EXTENSION}`,
       excludeFilter: (path) => !path.endsWith(EXTENSION),
     },
@@ -36,10 +36,10 @@ async function main() {
   const { SheetNames: sheetNames } = workbook;
 
   // ask the user which sheets to convert
-  const { sheets } = await prompt([
+  const { selectedSheets } = await prompt([
     {
       type: 'checkbox',
-      name: 'sheets',
+      name: 'selectedSheets',
       message: 'Select sheets',
       choices: sheetNames,
       default: sheetNames,
@@ -48,7 +48,7 @@ async function main() {
   ]);
 
   // write sheets to csv files
-  sheets.forEach((sheetName) => {
+  selectedSheets.forEach((sheetName) => {
     const csv = xlsx.utils.sheet_to_csv(workbook.Sheets[sheetName]);
     const suffix = sheetName
       .replace('/', '-')
