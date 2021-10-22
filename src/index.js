@@ -1,3 +1,4 @@
+const fs = require('fs');
 const inquirer = require('inquirer');
 const xlsx = require('xlsx');
 
@@ -31,7 +32,7 @@ async function main() {
   const workbook = xlsx.readFile(filename);
   const { SheetNames: sheetNames } = workbook;
 
-  // ask for sheets to be converted
+  // ask the user which sheets to convert
   const { sheets } = await prompt([
     {
       type: 'checkbox',
@@ -43,7 +44,16 @@ async function main() {
     },
   ]);
 
-  console.log(sheets);
+  // write sheets to csv files
+  sheets.forEach((sheetName) => {
+    const csv = xlsx.utils.sheet_to_csv(workbook.Sheets[sheetName]);
+    const suffix = sheetName
+      .replace('/', '-')
+      .replace(' - ', '-')
+      .replace(' ', '-');
+    const out = `${filename.replace('.xlsx', '')}_${suffix}.csv`;
+    fs.writeFileSync(out, csv);
+  });
 }
 
 (async () => {
