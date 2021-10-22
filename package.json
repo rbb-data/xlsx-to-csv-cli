@@ -1,0 +1,23 @@
+{
+  "name": "excel-to-csv-cli",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sophiamersmann/excel-to-csv-cli.git"
+  },
+  "author": "Sophia Mersmann",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/sophiamersmann/excel-to-csv-cli/issues"
+  },
+  "homepage": "https://github.com/sophiamersmann/excel-to-csv-cli#readme",
+  "dependencies": {
+    "inquirer": "^8.2.0",
+    "inquirer-fuzzy-path": "^2.3.0"
+  }
+}
