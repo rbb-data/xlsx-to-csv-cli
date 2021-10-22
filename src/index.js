@@ -4,6 +4,8 @@ const xlsx = require('xlsx');
 
 inquirer.registerPrompt('fuzzypath', require('inquirer-fuzzy-path'));
 
+const EXTENSION = '.xlsx';
+
 async function main() {
   function prompt(questions) {
     try {
@@ -24,7 +26,8 @@ async function main() {
       name: 'filename',
       message: 'Select file',
       itemType: 'any',
-      excludeFilter: (path) => !path.endsWith('.xlsx'),
+      suffix: `*${EXTENSION}`,
+      excludeFilter: (path) => !path.endsWith(EXTENSION),
     },
   ]);
 
@@ -51,7 +54,7 @@ async function main() {
       .replace('/', '-')
       .replace(' - ', '-')
       .replace(' ', '-');
-    const out = `${filename.replace('.xlsx', '')}_${suffix}.csv`;
+    const out = `${filename.replace(EXTENSION, '')}_${suffix}.csv`;
     fs.writeFileSync(out, csv);
   });
 }
