@@ -1,6 +1,6 @@
-const inquirer = require("inquirer");
+const inquirer = require('inquirer');
 
-inquirer.registerPrompt("fuzzypath", require("inquirer-fuzzy-path"));
+inquirer.registerPrompt('fuzzypath', require('inquirer-fuzzy-path'));
 
 const handleError = (error) => {
   if (error.isTtyError) {
@@ -13,11 +13,11 @@ const handleError = (error) => {
 inquirer
   .prompt([
     {
-      type: "fuzzypath",
-      name: "filename",
-      excludeFilter: (path) => !path.endsWith(".xlsx"),
-      itemType: "any",
-      message: "Select file",
+      type: 'fuzzypath',
+      name: 'filename',
+      excludeFilter: (path) => !path.endsWith('.xlsx'),
+      itemType: 'any',
+      message: 'Select file',
     },
   ])
   .then((answers) => {

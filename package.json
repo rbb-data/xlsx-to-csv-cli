@@ -4,7 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "lint": "npm run lint:eslint && npm run lint:prettier",
+    "lint:eslint": "eslint --fix 'src/*.js'",
+    "lint:prettier": "npx prettier --write ."
   },
   "repository": {
     "type": "git",
@@ -19,5 +22,10 @@
   "dependencies": {
     "inquirer": "^8.2.0",
     "inquirer-fuzzy-path": "^2.3.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.0.1",
+    "eslint-config-prettier": "^8.3.0",
+    "prettier": "2.4.1"
   }
 }
