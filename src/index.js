@@ -36,6 +36,8 @@ function prompt(questions) {
 }
 
 function split(table) {
+  if (table.length === 0) return { header: [], data: [] };
+
   const nRows = table.length;
   const nCols = table[0].length;
 

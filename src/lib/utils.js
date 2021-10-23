@@ -25,6 +25,8 @@ function toRow(line) {
 }
 
 function transpose(table) {
+  if (table.length === 0) return table;
+
   const nRows = table.length;
   const nCols = table[0].length;
 
