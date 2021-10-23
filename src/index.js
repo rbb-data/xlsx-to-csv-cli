@@ -85,6 +85,9 @@ async function requestColumnNames(sheetName, header, prevColNames) {
       .filter((cell) => cell)
       .map((cell) => cell.replace('\r', '').trim())
       .join(' / '),
+    suffix: ' (Type "no" to ignore)',
+    filter: (colName) =>
+      colName.toLowerCase() === 'no' ? '[ignored]' : colName,
   }));
 
   // transform answers into column names
@@ -125,6 +128,9 @@ async function main() {
       choices: sheetNames,
       default: sheetNames,
       loop: false,
+      validate(selectedSheets) {
+        return selectedSheets.length > 0 ? true : 'Select at least one sheet';
+      },
     },
   ]);
 
@@ -144,12 +150,17 @@ async function main() {
     table = utils.transpose(utils.transpose(table).filter(utils.hasEntry));
 
     // separate data from meta information
-    const { header, data } = split(table);
+    let { header, data } = split(table);
 
     // get column names from the user
     const colNames = await requestColumnNames(sheetName, header, prevColNames);
     prevColNames = colNames;
+
+    // add column names to data and remove columns to ignore
     data.unshift(colNames);
+    data = utils.transpose(
+      utils.transpose(data).filter((row) => row[0] !== '[ignored]')
+    );
 
     // save tabular data to csv file
     const suffix = sheetName
