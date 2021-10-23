@@ -1,3 +1,5 @@
+// @ts-check
+
 const fs = require('fs');
 const inquirer = require('inquirer');
 const inquirerFuzzyPath = require('inquirer-fuzzy-path');
@@ -10,6 +12,13 @@ inquirer.registerPrompt('fuzzypath', inquirerFuzzyPath);
 
 const EXTENSION = '.xlsx';
 
+/**
+ * Apply `transform` to each cell in `sheet`
+ *
+ * @param {Object} sheet - workbook sheet
+ * @param {(cell: Object) => Object} transform
+ * @returns {Object} sheet
+ */
 function transformCells(sheet, transform = (cell) => cell) {
   const range = xlsx.utils.decode_range(sheet['!ref']);
   for (let rowIdx = range.s.r; rowIdx <= range.e.r; rowIdx++) {
@@ -23,6 +32,12 @@ function transformCells(sheet, transform = (cell) => cell) {
   return sheet;
 }
 
+/**
+ * Asks the user a collection of questions
+ *
+ * @param {inquirer.QuestionCollection} questions
+ * @returns {Promise<Object>}
+ */
 function prompt(questions) {
   try {
     return inquirer.prompt(questions);
@@ -35,6 +50,16 @@ function prompt(questions) {
   }
 }
 
+/**
+ * Split table into header and body
+ *
+ * Start and end of the data body are the first and
+ * last row in table that are complete
+ *
+ * @template T
+ * @param {import("./types").Table<T>} table
+ * @returns {{ data: import("./types").Table<T>, header: import("./types").Table<T> }}
+ */
 function split(table) {
   if (table.length === 0) return { header: [], data: [] };
 
@@ -60,7 +85,21 @@ function split(table) {
   return { header, data };
 }
 
+/**
+ * Ask the user to specify column names for a sheet
+ *
+ * @param {string} sheetName - name of the sheet
+ * @param {import("./types").Table<string>} header - table with headings
+ * @param {Array<string>} prevColNames - previously chosen column names
+ * @param {string} color - must be recognized by chalk
+ * @returns {Promise<Array<string>>} column names
+ */
 async function requestColumnNames(sheetName, header, prevColNames, color) {
+  /**
+   * Add styles to text
+   * @param {string} text
+   * @returns {string} Colored text
+   */
   const c = (text) => chalk[color](text);
 
   console.log();
