@@ -61,6 +61,8 @@ function split(table) {
 async function requestColumnNames(sheetName, header, prevColNames, color) {
   const c = (text) => chalk[color](text);
 
+  console.log();
+
   // reuse column names from the previous table?
   const { usePrevColNames } = await prompt([
     {
@@ -92,7 +94,7 @@ async function requestColumnNames(sheetName, header, prevColNames, color) {
     prefix: c('?'),
     suffix: ' (Type "no" to ignore)',
     filter: (colName) =>
-      colName.toLowerCase() === 'no' ? '[ignored]' : colName,
+      colName.toLowerCase() === 'no' ? chalk.dim.italic('ignored') : colName,
   }));
 
   // transform answers into column names
@@ -201,7 +203,7 @@ async function main() {
     // add column names to data and remove columns to ignore
     data.unshift(colNames);
     data = utils.transpose(
-      utils.transpose(data).filter((row) => row[0] !== '[ignored]')
+      utils.transpose(data).filter((row) => row[0] !== 'ignored')
     );
 
     // save tabular data to csv file
