@@ -9,17 +9,14 @@ inquirer.registerPrompt('fuzzypath', inquirerFuzzyPath);
 
 const EXTENSION = '.xlsx';
 
-function removeLineBreaksFromCells(sheet) {
+function transformCells(sheet, transform = (cell) => cell) {
   const range = xlsx.utils.decode_range(sheet['!ref']);
   for (let rowIdx = range.s.r; rowIdx <= range.e.r; rowIdx++) {
     const row = xlsx.utils.encode_row(rowIdx);
     for (let colIdx = range.s.c; colIdx <= range.e.c; colIdx++) {
       const col = xlsx.utils.encode_col(colIdx);
       const cell = sheet[col + row];
-      if (cell && cell.t === 's') {
-        if (cell.w) cell.w = utils.removeLineBreaks(cell.w);
-        if (cell.v) cell.v = utils.removeLineBreaks(cell.v);
-      }
+      sheet[col + row] = transform(cell);
     }
   }
   return sheet;
@@ -119,8 +116,8 @@ async function main() {
   const workbook = xlsx.readFile(filename);
   const { SheetNames: sheetNames } = workbook;
 
-  // ask the user which sheets to convert
-  const { selectedSheets } = await prompt([
+  const { selectedSheets, isGermanFormat } = await prompt([
+    // ask the user which sheets to convert
     {
       type: 'checkbox',
       name: 'selectedSheets',
@@ -132,6 +129,14 @@ async function main() {
         return selectedSheets.length > 0 ? true : 'Select at least one sheet';
       },
     },
+    // check the number formatting
+    {
+      type: 'confirm',
+      name: 'isGermanFormat',
+      message:
+        'Are numbers formatted in German and do you want them to be converted to English-style numbers?',
+      default: false,
+    },
   ]);
 
   let prevColNames;
@@ -139,7 +144,31 @@ async function main() {
     const sheetName = selectedSheets[sheetNum];
 
     // grab sheet data from excel
-    const sheet = removeLineBreaksFromCells(workbook.Sheets[sheetName]);
+    let sheet = workbook.Sheets[sheetName];
+
+    sheet = transformCells(sheet, (cell) => {
+      if (!cell) return cell;
+
+      if (cell.t === 's') {
+        // necessary to ensure cells do not contains new line characters
+        if (cell.w) cell.w = utils.removeLineBreaks(cell.w);
+        if (cell.v) cell.v = utils.removeLineBreaks(cell.v);
+      } else if (isGermanFormat && cell.t === 'n') {
+        // convert to English formatting style
+        if (cell.w) {
+          cell.w = cell.w
+            // @ is just a temporary placeholder
+            .replaceAll(',', '@')
+            .replace('.', ',')
+            .replace('@', '.');
+          if (cell.v) cell.v = +cell.w;
+        }
+      }
+
+      return cell;
+    });
+
+    // convert to csv
     const csv = xlsx.utils.sheet_to_csv(sheet);
 
     // tabular data
