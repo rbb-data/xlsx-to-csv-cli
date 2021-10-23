@@ -61,19 +61,14 @@ async function requestColumnNames(sheetName, header, prevColNames) {
   if (usePrevColNames) return prevColNames;
 
   // ask for column names
-  const transposedHeader = utils.transpose(header);
-  const requests = transposedHeader.map((heading, j) => ({
+  const requests = utils.transpose(header).map((heading, j) => ({
     type: 'input',
     name: `colName-${j}`,
     message: `${sheetName}: Name of column #${String(j + 1).padStart(2, '0')}`,
-    default:
-      j > 0
-        ? heading
-            .filter((cell) => cell)
-            .slice(-4)
-            .map((cell) => cell.replace('\r', '').trim())
-            .join(' / ')
-        : 'category',
+    default: heading
+      .filter((cell) => cell)
+      .map((cell) => cell.replace('\r', '').trim())
+      .join(' / '),
   }));
 
   // transform answers into column names
