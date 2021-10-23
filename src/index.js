@@ -2,6 +2,7 @@ const fs = require('fs');
 const inquirer = require('inquirer');
 const inquirerFuzzyPath = require('inquirer-fuzzy-path');
 const xlsx = require('xlsx');
+const chalk = require('chalk');
 
 const utils = require('./lib/utils');
 
@@ -57,14 +58,19 @@ function split(table) {
   return { header, data };
 }
 
-async function requestColumnNames(sheetName, header, prevColNames) {
+async function requestColumnNames(sheetName, header, prevColNames, color) {
+  const c = (text) => chalk[color](text);
+
   // reuse column names from the previous table?
   const { usePrevColNames } = await prompt([
     {
       type: 'confirm',
       name: 'usePrevColNames',
-      message: `${sheetName}: Do you want to reuse the column names you assigned to the previous table?`,
+      message: c(
+        'Do you want to reuse the column names you assigned to the previous table?'
+      ),
       default: false,
+      prefix: c('?'),
       when() {
         return prevColNames;
       },
@@ -77,11 +83,13 @@ async function requestColumnNames(sheetName, header, prevColNames) {
   const requests = utils.transpose(header).map((heading, j) => ({
     type: 'input',
     name: `colName-${j}`,
-    message: `${sheetName}: Name of column #${String(j + 1).padStart(2, '0')}`,
+    message:
+      c(sheetName + ': ') + `Name of column #${String(j + 1).padStart(2, '0')}`,
     default: heading
       .filter((cell) => cell)
       .map((cell) => cell.replace('\r', '').trim())
       .join(' / '),
+    prefix: c('?'),
     suffix: ' (Type "no" to ignore)',
     filter: (colName) =>
       colName.toLowerCase() === 'no' ? '[ignored]' : colName,
@@ -182,7 +190,12 @@ async function main() {
     let { header, data } = split(table);
 
     // get column names from the user
-    const colNames = await requestColumnNames(sheetName, header, prevColNames);
+    const colNames = await requestColumnNames(
+      sheetName,
+      header,
+      prevColNames,
+      sheetNum % 2 === 0 ? 'green' : 'yellow'
+    );
     prevColNames = colNames;
 
     // add column names to data and remove columns to ignore
