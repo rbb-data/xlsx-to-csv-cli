@@ -9,6 +9,22 @@ inquirer.registerPrompt('fuzzypath', inquirerFuzzyPath);
 
 const EXTENSION = '.xlsx';
 
+function removeLineBreaksFromCells(sheet) {
+  const range = xlsx.utils.decode_range(sheet['!ref']);
+  for (let rowIdx = range.s.r; rowIdx <= range.e.r; rowIdx++) {
+    const row = xlsx.utils.encode_row(rowIdx);
+    for (let colIdx = range.s.c; colIdx <= range.e.c; colIdx++) {
+      const col = xlsx.utils.encode_col(colIdx);
+      const cell = sheet[col + row];
+      if (cell && cell.t === 's') {
+        if (cell.w) cell.w = utils.removeLineBreaks(cell.w);
+        if (cell.v) cell.v = utils.removeLineBreaks(cell.v);
+      }
+    }
+  }
+  return sheet;
+}
+
 function prompt(questions) {
   try {
     return inquirer.prompt(questions);
@@ -117,10 +133,11 @@ async function main() {
     const sheetName = selectedSheets[sheetNum];
 
     // grab sheet data from excel
-    const csv = xlsx.utils.sheet_to_csv(workbook.Sheets[sheetName]);
+    const sheet = removeLineBreaksFromCells(workbook.Sheets[sheetName]);
+    const csv = xlsx.utils.sheet_to_csv(sheet);
 
     // tabular data
-    let table = csv.split('\n').map(utils.toRow);
+    let table = csv.split(/\r\n|\r|\n/).map(utils.toRow);
 
     // remove empty rows and cols
     table = table.filter(utils.hasEntry);

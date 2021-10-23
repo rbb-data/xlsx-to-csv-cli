@@ -48,6 +48,10 @@ function toCsv(table) {
     .join('\n');
 }
 
+function removeLineBreaks(str) {
+  return str.replaceAll('\n', ' ').replaceAll('\r', '');
+}
+
 module.exports = {
   isSpecial,
   isQuote,
@@ -56,4 +60,5 @@ module.exports = {
   transpose,
   hasEntry,
   toCsv,
+  removeLineBreaks,
 };
