@@ -36,7 +36,7 @@ function split(table) {
   const firstRow = findStartIndex(table) || 0;
 
   // the last complete row marks the end of the data
-  const lastRow = findStartIndex([...table].reverse()) || nRows - 1;
+  const lastRow = nRows - 1 - (findStartIndex([...table].reverse()) || 0);
 
   const header = table.slice(0, firstRow);
   const data = table.slice(firstRow, lastRow + 1);
