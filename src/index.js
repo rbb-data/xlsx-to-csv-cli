@@ -203,7 +203,7 @@ async function main() {
     // add column names to data and remove columns to ignore
     data.unshift(colNames);
     data = utils.transpose(
-      utils.transpose(data).filter((row) => row[0] !== 'ignored')
+      utils.transpose(data).filter((row) => !row[0].includes('ignored'))
     );
 
     // save tabular data to csv file
