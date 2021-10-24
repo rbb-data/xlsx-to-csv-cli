@@ -18,6 +18,13 @@ const EXTENSION = '.xlsx';
  */
 
 /**
+ * Copy-pasted from https://github.com/chalk/chalk/blob/main/source/index.d.ts
+ * Necessary because `import('chalk')` does not export `ForegroundColor`
+ * (if chalk is required, `ForegroundColor` is in fact exported - so, not sure what's going on)
+ * @typedef {'black' | 'red' | 'green' | 'yellow' | 'blue' | 'magenta' | 'cyan' | 'white' | 'gray' | 'grey' | 'blackBright' | 'redBright' | 'greenBright' | 'yellowBright' | 'blueBright' | 'magentaBright' | 'cyanBright' | 'whiteBright'} ForegroundColor
+ */
+
+/**
  * @template T
  * @typedef {import('./types').Row<T>} Row<T>
  */
@@ -106,7 +113,7 @@ function split(table) {
  * @param {string} sheetName - name of the sheet
  * @param {Table<string>} header - table with headings
  * @param {Array<string>} prevColNames - previously chosen column names
- * @param {string} color - must be recognized by chalk
+ * @param {ForegroundColor} color - to highlight sheet name
  * @returns {Promise<Array<string>>} column names
  */
 async function requestColumnNames(sheetName, header, prevColNames, color) {
