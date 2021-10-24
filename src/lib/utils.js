@@ -16,7 +16,7 @@
  * @param {string} char - Single character
  * @returns {boolean}
  */
-const isSpecial = (char) => ['"', "'", ','].includes(char);
+const isSpecial = (char) => isQuotationMark(char) || isSeparator(char);
 
 /**
  * Is `char` a quotation mark
@@ -24,7 +24,7 @@ const isSpecial = (char) => ['"', "'", ','].includes(char);
  * @param {string} char - Single character
  * @returns {boolean}
  */
-const isQuotationMark = (char) => ['"', "'"].includes(char);
+const isQuotationMark = (char) => char === '"';
 
 /**
  * Is `char` a csv separator
