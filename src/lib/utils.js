@@ -48,12 +48,16 @@ function toRow(line) {
     const char = line[i];
 
     if (isSpecial(char)) {
-      if (isQuotationMark(char)) withinQuotes = !withinQuotes;
-      else if (isSeparator(char) && !withinQuotes) {
+      if (isQuotationMark(char)) {
+        withinQuotes = !withinQuotes;
+        continue;
+      }
+
+      if (isSeparator(char) && !withinQuotes) {
         if (!row[idx]) row[idx] = '';
         idx += 1;
+        continue;
       }
-      continue;
     }
 
     if (!row[idx]) row[idx] = '';
