@@ -1,6 +1,16 @@
 // @ts-check
 
 /**
+ * @template T
+ * @typedef {import('../types').Row<T>} Row<T>
+ */
+
+/**
+ * @template T
+ * @typedef {import('../types').Table<T>} Table<T>
+ */
+
+/**
  * Is `char` a special character
  *
  * @param {string} char - Single character
@@ -28,7 +38,7 @@ const isSeparator = (char) => char === ',';
  * Convert line to csv row
  *
  * @param {string} line
- * @returns {Array<string>} row of cells
+ * @returns {Row<string>} row of cells
  */
 function toRow(line) {
   let row = [];
@@ -56,8 +66,8 @@ function toRow(line) {
  * Transpose matrix
  *
  * @template T
- * @param {import("../types").Table<T>} table - of size n x m
- * @returns {import("../types").Table<T>} Transposed table of size m x n
+ * @param {Table<T>} table - of size n x m
+ * @returns {Table<T>} Transposed table of size m x n
  */
 function transpose(table) {
   if (table.length === 0) return table;
@@ -78,7 +88,7 @@ function transpose(table) {
 /**
  * Has at least one truthy value
  *
- * @param {import("../types").Row<any>} row
+ * @param {Row<any>} row
  * @returns {boolean}
  */
 function hasEntry(row) {
@@ -88,7 +98,7 @@ function hasEntry(row) {
 /**
  * Convert data table into CSV
  *
- * @param {import("../types").Table<any>} table
+ * @param {Table<any>} table
  * @returns {string} - CSV-formatted string
  */
 function toCsv(table) {

@@ -13,11 +13,26 @@ inquirer.registerPrompt('fuzzypath', inquirerFuzzyPath);
 const EXTENSION = '.xlsx';
 
 /**
+ * @typedef {import('inquirer')} inquirer
+ * @typedef {import('xlsx')} xlsx
+ */
+
+/**
+ * @template T
+ * @typedef {import('./types').Row<T>} Row<T>
+ */
+
+/**
+ * @template T
+ * @typedef {import('./types').Table<T>} Table<T>
+ */
+
+/**
  * Apply `transform` to each cell in `sheet`
  *
- * @param {Object} sheet - workbook sheet
- * @param {(cell: Object) => Object} transform
- * @returns {Object} sheet
+ * @param {xlsx.WorkSheet} sheet - workbook sheet
+ * @param {(cell: xlsx.CellObject) => xlsx.CellObject} transform
+ * @returns {xlsx.WorkSheet} sheet
  */
 function transformCells(sheet, transform = (cell) => cell) {
   const range = xlsx.utils.decode_range(sheet['!ref']);
@@ -57,8 +72,8 @@ function prompt(questions) {
  * last row in table that are complete
  *
  * @template T
- * @param {import("./types").Table<T>} table
- * @returns {{ data: import("./types").Table<T>, header: import("./types").Table<T> }}
+ * @param {Table<T>} table
+ * @returns {{ data: Table<T>, header: Table<T> }}
  */
 function split(table) {
   if (table.length === 0) return { header: [], data: [] };
@@ -89,7 +104,7 @@ function split(table) {
  * Ask the user to specify column names for a sheet
  *
  * @param {string} sheetName - name of the sheet
- * @param {import("./types").Table<string>} header - table with headings
+ * @param {Table<string>} header - table with headings
  * @param {Array<string>} prevColNames - previously chosen column names
  * @param {string} color - must be recognized by chalk
  * @returns {Promise<Array<string>>} column names
@@ -203,15 +218,20 @@ async function main() {
       if (cell.t === 's') {
         // necessary to ensure cells do not contains new line characters
         if (cell.w) cell.w = utils.removeLineBreaks(cell.w);
-        if (cell.v) cell.v = utils.removeLineBreaks(cell.v);
+        if (cell.v)
+          cell.v =
+            typeof cell.v === 'string'
+              ? utils.removeLineBreaks(cell.v)
+              : cell.v;
       } else if (isGermanFormat && cell.t === 'n') {
         // convert to English formatting style
         if (cell.w) {
           cell.w = cell.w
             // @ is just a temporary placeholder
+            // @ts-ignore
             .replaceAll(',', '@')
-            .replace('.', ',')
-            .replace('@', '.');
+            .replaceAll('.', ',')
+            .replaceAll('@', '.');
           if (cell.v) cell.v = +cell.w;
         }
       }
