@@ -1,24 +1,23 @@
 {
-  "name": "excel-to-csv-cli",
+  "name": "xlsx-to-csv-cli",
   "version": "0.1.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Simple command line interface to export CSV files from an Excel workbook",
   "scripts": {
     "start": "node src/index.js",
     "lint": "npm run lint:eslint && npm run lint:prettier",
-    "lint:eslint": "eslint --fix 'src/*.js'",
+    "lint:eslint": "eslint --fix 'src/**/*.js'",
     "lint:prettier": "npx prettier --write ."
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sophiamersmann/excel-to-csv-cli.git"
+    "url": "git+https://github.com/sophiamersmann/xlsx-to-csv-cli.git"
   },
   "author": "Sophia Mersmann",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/sophiamersmann/excel-to-csv-cli/issues"
+    "url": "https://github.com/sophiamersmann/xlsx-to-csv-cli/issues"
   },
-  "homepage": "https://github.com/sophiamersmann/excel-to-csv-cli#readme",
+  "homepage": "https://github.com/sophiamersmann/xlsx-to-csv-cli#readme",
   "dependencies": {
     "chalk": "^4.1.2",
     "inquirer": "^8.2.0",
