@@ -1,47 +1,38 @@
-// @ts-check
+import { Row, Table } from '../types';
 
 /**
- * @template T
- * @typedef {import('../types').Row<T>} Row<T>
- */
-
-/**
- * @template T
- * @typedef {import('../types').Table<T>} Table<T>
- */
-
-/**
- * Is `char` a special character
+ * Is `char` a special character in CSVs (`""` or `,`)
  *
- * @param {string} char - Single character
- * @returns {boolean}
+ * @param char - single character
+ * @returns true if `char` is a quotation mark or comma
  */
-const isSpecial = (char) => isQuotationMark(char) || isSeparator(char);
+export const isSpecial = (char: string): boolean =>
+  isQuotationMark(char) || isSeparator(char);
 
 /**
  * Is `char` a quotation mark
  *
- * @param {string} char - Single character
- * @returns {boolean}
+ * @param char - single character
+ * @returns true if `char` is a quotation mark
  */
-const isQuotationMark = (char) => char === '"';
+export const isQuotationMark = (char: string): boolean => char === '"';
 
 /**
  * Is `char` a csv separator
  *
- * @param {string} char - Single character
- * @returns {boolean}
+ * @param char - single character
+ * @returns true if `char` is a comma
  */
-const isSeparator = (char) => char === ',';
+export const isSeparator = (char: string): boolean => char === ',';
 
 /**
  * Convert line to csv row
  *
- * @param {string} line
- * @returns {Row<string>} row of cells
+ * @param line - single line in csv format
+ * @returns row of cells
  */
-function toRow(line) {
-  let row = [];
+export function toRow(line: string): Row<string> {
+  const row = [];
   let idx = 0;
   let withinQuotes = false;
   for (let i = 0; i < line.length; i++) {
@@ -69,11 +60,10 @@ function toRow(line) {
 /**
  * Transpose matrix
  *
- * @template T
- * @param {Table<T>} table - of size n x m
- * @returns {Table<T>} Transposed table of size m x n
+ * @param table - of size n x m
+ * @returns Transposed `table` of size m x n
  */
-function transpose(table) {
+export function transpose<T>(table: Table<T>): Table<T> {
   if (table.length === 0) return table;
 
   const nRows = table.length;
@@ -92,20 +82,20 @@ function transpose(table) {
 /**
  * Has at least one truthy value
  *
- * @param {Row<any>} row
- * @returns {boolean}
+ * @param row - csv row
+ * @returns false if all values in `row` are falsy
  */
-function hasEntry(row) {
+export function hasEntry(row: Row<string>): boolean {
   return row.some((cell) => cell);
 }
 
 /**
  * Convert data table into CSV
  *
- * @param {Table<any>} table
- * @returns {string} - CSV-formatted string
+ * @param table - 2d matrix
+ * @returns csv-formatted string
  */
-function toCsv(table) {
+export function toCsv(table: Table<string>): string {
   return table
     .map((row) => row.map((cell) => `"${cell}"`).join(','))
     .join('\n');
@@ -114,21 +104,9 @@ function toCsv(table) {
 /**
  * Remove line breaks from the given string
  *
- * @param {string} str
- * @returns {string} Single-line string
+ * @param str - possibly multi-line string
+ * @returns Single-line string
  */
-function removeLineBreaks(str) {
-  // @ts-ignore
+export function removeLineBreaks(str: string): string {
   return str.replaceAll('\n', ' ').replaceAll('\r', '');
 }
-
-module.exports = {
-  isSpecial,
-  isQuote: isQuotationMark,
-  isComma: isSeparator,
-  toRow,
-  transpose,
-  hasEntry,
-  toCsv,
-  removeLineBreaks,
-};

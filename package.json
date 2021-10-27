@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "description": "Interactive command line interface to export CSV files from an Excel workbook",
   "scripts": {
-    "start": "node src/index.js",
+    "start": "tsc && node build/index.js",
     "lint": "npm run lint:eslint && npm run lint:prettier",
-    "lint:eslint": "eslint --fix 'src/**/*.js'",
+    "lint:eslint": "eslint --fix 'src/**/*.ts'",
     "lint:prettier": "npx prettier --write ."
   },
   "repository": {
@@ -26,8 +26,13 @@
   },
   "devDependencies": {
     "@types/inquirer": "^8.1.3",
-    "eslint": "^8.0.1",
+    "@types/inquirer-fuzzy-path": "^2.3.3",
+    "@types/node": "^16.11.5",
+    "@typescript-eslint/eslint-plugin": "^5.2.0",
+    "@typescript-eslint/parser": "^5.2.0",
+    "eslint": "^8.1.0",
     "eslint-config-prettier": "^8.3.0",
-    "prettier": "2.4.1"
+    "prettier": "2.4.1",
+    "typescript": "^4.4.4"
   }
 }

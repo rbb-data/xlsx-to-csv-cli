@@ -1,47 +1,28 @@
-// @ts-check
+import fs from 'fs';
+import inquirer from 'inquirer';
+import inquirerFuzzyPath from 'inquirer-fuzzy-path';
+import xlsx from 'xlsx';
+import chalk, { ForegroundColor } from 'chalk';
 
-const fs = require('fs');
-const inquirer = require('inquirer');
-const inquirerFuzzyPath = require('inquirer-fuzzy-path');
-const xlsx = require('xlsx');
-const chalk = require('chalk');
-
-const utils = require('./lib/utils');
+import * as utils from './lib/utils';
+import { Row, Table } from './types';
 
 inquirer.registerPrompt('fuzzypath', inquirerFuzzyPath);
 
 const EXTENSION = '.xlsx';
 
 /**
- * @typedef {import('inquirer')} inquirer
- * @typedef {import('xlsx')} xlsx
- */
-
-/**
- * Copy-pasted from https://github.com/chalk/chalk/blob/main/source/index.d.ts
- * Necessary because `import('chalk')` does not export `ForegroundColor`
- * (if chalk is required, `ForegroundColor` is in fact exported - so, not sure what's going on)
- * @typedef {'black' | 'red' | 'green' | 'yellow' | 'blue' | 'magenta' | 'cyan' | 'white' | 'gray' | 'grey' | 'blackBright' | 'redBright' | 'greenBright' | 'yellowBright' | 'blueBright' | 'magentaBright' | 'cyanBright' | 'whiteBright'} ForegroundColor
- */
-
-/**
- * @template T
- * @typedef {import('./types').Row<T>} Row<T>
- */
-
-/**
- * @template T
- * @typedef {import('./types').Table<T>} Table<T>
- */
-
-/**
  * Apply `transform` to each cell in `sheet`
  *
- * @param {xlsx.WorkSheet} sheet - workbook sheet
- * @param {(cell: xlsx.CellObject) => xlsx.CellObject} transform
- * @returns {xlsx.WorkSheet} sheet
+ * @param sheet - workbook sheet
+ * @param transform - function applied to each cell
+ * @returns workbook sheet with transformed cell values
  */
-function transformCells(sheet, transform = (cell) => cell) {
+function transformCells(
+  sheet: xlsx.WorkSheet,
+  transform = (cell: xlsx.CellObject): xlsx.CellObject => cell
+): xlsx.WorkSheet {
+  if (!sheet['!ref']) return sheet;
   const range = xlsx.utils.decode_range(sheet['!ref']);
   for (let rowIdx = range.s.r; rowIdx <= range.e.r; rowIdx++) {
     const row = xlsx.utils.encode_row(rowIdx);
@@ -57,17 +38,23 @@ function transformCells(sheet, transform = (cell) => cell) {
 /**
  * Asks the user a collection of questions
  *
- * @param {inquirer.QuestionCollection} questions
- * @returns {Promise<Object>}
+ * @param questions - collection of questions to ask the user
+ * @return the user's answers
  */
-function prompt(questions) {
+function prompt(
+  questions: inquirer.QuestionCollection
+): Promise<{ [key: string]: unknown }> {
   try {
     return inquirer.prompt(questions);
-  } catch (error) {
+  } catch (error: any) {
     if (error.isTtyError) {
-      // Prompt couldn't be rendered in the current environment
+      process.stderr.write(
+        "Prompt couldn't be rendered in the current environment"
+      );
+      process.exit(1);
     } else {
-      // Something else went wrong
+      process.stderr.write('Something went wrong');
+      process.exit(1);
     }
   }
 }
@@ -78,17 +65,16 @@ function prompt(questions) {
  * Start and end of the data body are the first and
  * last row in table that are complete
  *
- * @template T
- * @param {Table<T>} table
- * @returns {{ data: Table<T>, header: Table<T> }}
+ * @param table - 2d matrix
+ * @returns - two tables containing data and the head of the table resp.
  */
-function split(table) {
+function split<T>(table: Table<T>): { data: Table<T>; header: Table<T> } {
   if (table.length === 0) return { header: [], data: [] };
 
   const nRows = table.length;
   const nCols = table[0].length;
 
-  const findStartIndex = (table) => {
+  const findStartIndex = (table: Table<T>): number | null => {
     const idx = table.findIndex(
       (row) => row.filter((cell) => cell).length === nCols
     );
@@ -110,24 +96,29 @@ function split(table) {
 /**
  * Ask the user to specify column names for a sheet
  *
- * @param {string} sheetName - name of the sheet
- * @param {Table<string>} header - table with headings
- * @param {Array<string>} prevColNames - previously chosen column names
- * @param {ForegroundColor} color - to highlight sheet name
- * @returns {Promise<Array<string>>} column names
+ * @param sheetName - name of the sheet
+ * @param header - table with headings
+ * @param color - to highlight sheet name
+ * @param prevColNames - previously chosen column names
+ * @returns column names
  */
-async function requestColumnNames(sheetName, header, prevColNames, color) {
+async function requestColumnNames(
+  sheetName: string,
+  header: Table<string>,
+  color: typeof ForegroundColor,
+  prevColNames?: Array<string>
+): Promise<Array<string>> {
   /**
    * Add styles to text
    * @param {string} text
    * @returns {string} Colored text
    */
-  const c = (text) => chalk[color](text);
+  const c = (text: string): string => chalk[color](text);
 
   console.log();
 
   // reuse column names from the previous table?
-  const { usePrevColNames } = await prompt([
+  const { usePrevColNames } = (await prompt([
     {
       type: 'confirm',
       name: 'usePrevColNames',
@@ -140,33 +131,40 @@ async function requestColumnNames(sheetName, header, prevColNames, color) {
         return prevColNames;
       },
     },
-  ]);
+  ])) as { usePrevColNames: boolean };
 
-  if (usePrevColNames) return prevColNames;
+  if (usePrevColNames && prevColNames) return prevColNames;
 
   // ask for column names
-  const requests = utils.transpose(header).map((heading, j) => ({
-    type: 'input',
-    name: `colName-${j}`,
-    message:
-      c(sheetName + ': ') + `Name of column #${String(j + 1).padStart(2, '0')}`,
-    default: heading
-      .filter((cell) => cell)
-      .map((cell) => cell.replace('\r', '').trim())
-      .join(' / '),
-    prefix: c('?'),
-    suffix: ' (Type "no" to ignore)',
-    filter: (colName) =>
-      colName.toLowerCase() === 'no' ? chalk.dim.italic('ignored') : colName,
-  }));
+  const requests = utils
+    .transpose(header)
+    .map((heading: Row<string>, j: number) => ({
+      type: 'input',
+      name: `colName-${j}`,
+      message:
+        c(sheetName + ': ') +
+        `Name of column #${String(j + 1).padStart(2, '0')}`,
+      default: heading
+        .filter((cell: string): string => cell)
+        .map((cell: string): string => cell.replace('\r', '').trim())
+        .join(' / '),
+      prefix: c('?'),
+      suffix: ' (Type "no" to ignore)',
+      filter: (colName: string): string =>
+        colName.toLowerCase() === 'no' ? chalk.dim.italic('ignored') : colName,
+    }));
 
   // transform answers into column names
-  const answers = await prompt(requests);
-  const indexedAnswers = Object.entries(answers).map(([key, value]) => [
-    +key.replace('colName-', ''),
-    value,
-  ]);
-  indexedAnswers.sort((a, b) => a[0] - b[0]);
+  const answers = (await prompt(requests)) as { [key: string]: string };
+  const indexedAnswers = Object.entries(answers).map(
+    ([key, value]: [string, string]): [number, string] => [
+      +key.replace('colName-', ''),
+      value,
+    ]
+  );
+  indexedAnswers.sort(
+    (a: [number, string], b: [number, string]) => a[0] - b[0]
+  );
   const colNames = indexedAnswers.map(([, value]) => value);
 
   return colNames;
@@ -174,22 +172,22 @@ async function requestColumnNames(sheetName, header, prevColNames, color) {
 
 async function main() {
   // ask for excel file
-  const { filename } = await prompt([
+  const { filename } = (await prompt([
     {
       type: 'fuzzypath',
       name: 'filename',
       message: 'Select file',
       itemType: 'file',
       suffix: ` (*${EXTENSION})`,
-      excludeFilter: (path) => !path.endsWith(EXTENSION),
+      excludeFilter: (path: string): boolean => !path.endsWith(EXTENSION),
     },
-  ]);
+  ])) as { filename: string };
 
   // read sheet names
   const workbook = xlsx.readFile(filename);
   const { SheetNames: sheetNames } = workbook;
 
-  const { selectedSheets, isGermanFormat } = await prompt([
+  const { selectedSheets, isGermanFormat } = (await prompt([
     // ask the user which sheets to convert
     {
       type: 'checkbox',
@@ -210,7 +208,7 @@ async function main() {
         'Are numbers formatted in German and do you want them to be converted to English-style numbers?',
       default: false,
     },
-  ]);
+  ])) as { selectedSheets: Array<string>; isGermanFormat: boolean };
 
   let prevColNames;
   for (let sheetNum = 0; sheetNum < selectedSheets.length; sheetNum++) {
@@ -235,7 +233,6 @@ async function main() {
         if (cell.w) {
           cell.w = cell.w
             // @ is just a temporary placeholder
-            // @ts-ignore
             .replaceAll(',', '@')
             .replaceAll('.', ',')
             .replaceAll('@', '.');
@@ -257,21 +254,25 @@ async function main() {
     table = utils.transpose(utils.transpose(table).filter(utils.hasEntry));
 
     // separate data from meta information
-    let { header, data } = split(table);
+    const splitTable = split(table);
+    const { header } = splitTable;
+    let { data } = splitTable;
 
     // get column names from the user
-    const colNames = await requestColumnNames(
+    const colNames = (await requestColumnNames(
       sheetName,
       header,
-      prevColNames,
-      sheetNum % 2 === 0 ? 'green' : 'yellow'
-    );
+      sheetNum % 2 === 0 ? 'green' : 'yellow',
+      prevColNames
+    )) as Array<string>;
     prevColNames = colNames;
 
     // add column names to data and remove columns to ignore
     data.unshift(colNames);
     data = utils.transpose(
-      utils.transpose(data).filter((row) => !row[0].includes('ignored'))
+      utils
+        .transpose(data)
+        .filter((row: Row<string>): boolean => !row[0].includes('ignored'))
     );
 
     // save tabular data to csv file
