@@ -108,11 +108,6 @@ async function requestColumnNames(
   color: typeof ForegroundColor,
   prevColNames?: Array<string>
 ): Promise<Array<string>> {
-  /**
-   * Add styles to text
-   * @param {string} text
-   * @returns {string} Colored text
-   */
   const c = (text: string): string => chalk[color](text);
 
   console.log();
@@ -244,7 +239,7 @@ async function main() {
     });
 
     // convert to csv
-    const csv = xlsx.utils.sheet_to_csv(sheet);
+    const csv = xlsx.utils.sheet_to_csv(sheet, { rawNumbers: true });
 
     // tabular data
     let table = csv.split(/\r\n|\r|\n/).map(utils.toRow);
