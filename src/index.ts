@@ -254,10 +254,11 @@ async function main() {
     let { data } = splitTable;
 
     // get column names from the user
+    const color = sheetNum % 2 === 0 ? 'green' : 'yellow';
     const colNames = (await requestColumnNames(
       sheetName,
       header,
-      sheetNum % 2 === 0 ? 'green' : 'yellow',
+      color,
       prevColNames
     )) as Array<string>;
     prevColNames = colNames;
@@ -275,7 +276,16 @@ async function main() {
       .replace('/', '-')
       .replace(' - ', '-')
       .replace(' ', '-');
-    const out = `${filename.replace(EXTENSION, '')}_${suffix}.csv`;
+    const { out } = (await prompt([
+      {
+        type: 'input',
+        name: 'out',
+        message: chalk[color](sheetName + ':') + ' Name of result file',
+        default: `${filename.replace(EXTENSION, '')}_${suffix}.csv`,
+        prefix: chalk[color]('?'),
+      },
+    ])) as { out: string };
+
     fs.writeFileSync(out, utils.toCsv(data));
   }
 }

@@ -6,7 +6,7 @@
     "start": "tsc && node build/index.js",
     "lint": "npm run lint:eslint && npm run lint:prettier",
     "lint:eslint": "eslint --fix 'src/**/*.ts'",
-    "lint:prettier": "npx prettier --write ."
+    "lint:prettier": "npx prettier --write src"
   },
   "repository": {
     "type": "git",
