@@ -58,8 +58,11 @@ function split<T>(table: Table<T>): { data: Table<T>; header: Table<T> } {
   // the last complete row marks the end of the data
   const lastRow = nRows - 1 - (findStartIndex([...table].reverse()) || 0);
 
-  const header = table.slice(0, firstRow);
-  const data = table.slice(firstRow, lastRow + 1);
+  let header = table.slice(0, firstRow);
+  let data = table.slice(firstRow, lastRow + 1);
+
+  if (header.length === 0) header = [new Array(nCols).fill('')];
+  if (data.length === 0) data = [new Array(nCols).fill('')];
 
   return { header, data };
 }
