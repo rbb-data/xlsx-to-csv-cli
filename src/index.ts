@@ -1,7 +1,7 @@
 import fs from 'fs';
 import xlsx from 'xlsx';
 
-import * as r from './lib/request';
+import request from './lib/request';
 import * as utils from './lib/utils';
 
 import { Row, Table } from './types';
@@ -69,15 +69,31 @@ function split<T>(table: Table<T>): { data: Table<T>; header: Table<T> } {
 
 async function main() {
   // ask for excel file
-  const filename = await r.requestExcelFilename();
+  let cfg = await request('filename');
+  const { filename } = cfg as { filename: string };
+
+  // ask for config file
+  cfg = await request('configFilename', cfg);
+  if (cfg.configFilename) {
+    const externalConfig = JSON.parse(
+      fs.readFileSync(cfg.configFilename, 'utf-8')
+    );
+    cfg = { ...externalConfig, ...cfg };
+  }
 
   // get sheets to process
   const workbook = xlsx.readFile(filename);
   const { SheetNames: sheetNames } = workbook;
-  const selectedSheets = await r.requestSheets(sheetNames);
+  cfg = await request('sheets', cfg, {
+    sheetNames,
+    defaultSheets: cfg.sheets,
+  });
+  const { sheets: selectedSheets } = cfg as { sheets: Array<string> };
 
   // number format
-  const isGermanFormat = await r.requestFormat();
+  cfg = await request('isGermanFormat', cfg, {
+    defaultValue: cfg.isGermanFormat || false,
+  });
 
   let prevColNames;
   for (let sheetNum = 0; sheetNum < selectedSheets.length; sheetNum++) {
@@ -96,7 +112,7 @@ async function main() {
             typeof cell.v === 'string'
               ? utils.removeLineBreaks(cell.v)
               : cell.v;
-      } else if (isGermanFormat && cell.t === 'n') {
+      } else if (cfg.isGermanFormat && cell.t === 'n') {
         // convert to English formatting style
         if (cell.w) {
           cell.w = cell.w
@@ -118,7 +134,11 @@ async function main() {
     });
 
     // tabular data as 2d matrix
-    const table = csv.split(/\r\n|\r|\n/).map(utils.toRow);
+    let table = csv.split(/\r\n|\r|\n/).map(utils.toRow);
+
+    // remove empty rows and cols
+    table = table.filter(utils.hasEntry);
+    table = utils.transpose(utils.transpose(table).filter(utils.hasEntry));
 
     // separate data from meta information
     const splitTable = split(table);
@@ -127,13 +147,22 @@ async function main() {
 
     // get column names from the user
     const color = sheetNum % 2 === 0 ? 'green' : 'yellow';
-    const colNames = (await r.requestColumnNames(
+    cfg = await request('colNames', cfg, {
       sheetName,
       header,
       color,
-      prevColNames
-    )) as Array<string>;
+      prevColNames,
+      defaultColNames: cfg.colNamesPerSheet
+        ? cfg.colNamesPerSheet[sheetName]
+        : undefined,
+    });
+    const { colNames } = cfg as { colNames: Array<string> };
     prevColNames = colNames;
+
+    // write column names to config permanently
+    if (!cfg.colNamesPerSheet) cfg.colNamesPerSheet = {};
+    cfg.colNamesPerSheet[sheetName] = colNames;
+    delete cfg.colNames;
 
     // add column names to data and remove columns to ignore
     data.unshift(colNames);
@@ -144,9 +173,28 @@ async function main() {
     );
 
     // save tabular data to csv file
-    const out = await r.requestOutFile(filename, sheetName);
+    cfg = await request('out', cfg, {
+      filename,
+      sheetName,
+      color,
+      defaultFilename: cfg.outPerSheet ? cfg.outPerSheet[sheetName] : undefined,
+    });
+    const { out } = cfg as { out: string };
     fs.writeFileSync(out, utils.toCsv(data));
+
+    // write out filename to config permanently
+    if (!cfg.outPerSheet) cfg.outPerSheet = {};
+    cfg.outPerSheet[sheetName] = out;
+    delete cfg.out;
   }
+
+  // save config to file
+  cfg = await request('configOut', cfg, {
+    filename,
+    defaultFilename: cfg.configOut,
+  });
+  if (cfg.configOut)
+    fs.writeFileSync(cfg.configOut, JSON.stringify(cfg, null, 2));
 }
 
 (async () => {
