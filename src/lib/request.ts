@@ -1,13 +1,16 @@
-import path from 'path';
+import fs from 'fs';
 import inquirer from 'inquirer';
 import inquirerFuzzyPath from 'inquirer-fuzzy-path';
-import chalk, { ForegroundColor } from 'chalk';
+import chalk from 'chalk';
 
 import * as utils from './utils';
 
-import { Row, Table, Config, ExtendedConfig } from '../types';
+import { Row, Table, Question } from '../types';
 
 inquirer.registerPrompt('fuzzypath', inquirerFuzzyPath);
+
+// TODO: update doc
+// TODO: check for unnecessary type annotations
 
 /**
  * Asks the user a collection of questions
@@ -15,9 +18,7 @@ inquirer.registerPrompt('fuzzypath', inquirerFuzzyPath);
  * @param questions - collection of questions to ask the user
  * @return the user's answers
  */
-function prompt(
-  questions: inquirer.QuestionCollection
-): Promise<{ [key: string]: unknown }> {
+function prompt(questions: inquirer.QuestionCollection) {
   try {
     return inquirer.prompt(questions);
   } catch (error: any) {
@@ -33,71 +34,60 @@ function prompt(
   }
 }
 
-type RequestOptions =
-  | RequestColumnNamesOptions
-  | RequestOutFileOptions
-  | RequestSheetsOptions
-  | RequestFileOptions
-  | RequestOutConfigFileOptions
-  | RequestFormatOptions;
-
 /**
- * Update `config` with the user's answers stored in `key`
+ * Ask the user to confirm a single question
  *
- * @param key - name of the requested variable
- * @param config - current configuration
- * @returns updated configuration
+ * @param question - ask the user to confirm
+ * @returns answer from user
  */
-export default async function request(
-  key: keyof Config,
-  config?: ExtendedConfig,
-  options?: RequestOptions
-): Promise<ExtendedConfig> {
-  if (!config) config = {};
-  if (!options && key === 'filename')
-    options = { extension: 'xlsx' } as RequestFileOptions;
-
-  const _request = {
-    filename: requestFile,
-    configFilename: requestConfigFilename,
-    sheets: requestSheets,
-    isGermanFormat: requestFormat,
-    colNames: requestColumnNames,
-    out: requestOutFile,
-    configOut: requestOutConfigFile,
-  }[key];
-
-  return {
-    ...config,
-    // in a perfect world, one would check for the correct type here
-    [key]: await _request(options as any),
-  };
+export async function confirm(question: Question) {
+  const { isConfirmed } = (await prompt([
+    {
+      type: 'confirm',
+      name: 'isConfirmed',
+      message: 'Do you confirm?',
+      default: false,
+      ...question,
+    },
+  ])) as { isConfirmed: boolean };
+  return isConfirmed;
 }
 
-interface RequestFileOptions {
-  extension: string;
-  message: string;
+/**
+ * Request input from the user
+ *
+ * @param question - request input from the user
+ * @returns the user's input
+ */
+export async function requestString(question: Question) {
+  const { string } = (await prompt([
+    {
+      type: 'input',
+      name: 'string',
+      message: 'Enter string',
+      ...question,
+    },
+  ])) as { string: string };
+  return string;
 }
 
 /**
  * Request a filename with `extension` from the user
  *
  * @param extension - allowed extension
- * @param message - message to display
+ * @param question - additional question options
  * @returns path
  */
-async function requestFile({
-  extension,
-  message = 'Select file',
-}: RequestFileOptions): Promise<string> {
+export async function requestFile(extension: string, question?: Question) {
   const { filename } = (await prompt([
     {
       type: 'fuzzypath',
       name: 'filename',
-      message,
+      message: 'Select file',
       itemType: 'file',
       suffix: ` (*.${extension})`,
       excludeFilter: (path: string): boolean => !path.endsWith(`.${extension}`),
+      ...question,
     },
   ])) as { filename: string };
   return filename;
@@ -108,42 +98,29 @@ async function requestFile({
  *
  * @returns configuration
  */
-async function requestConfigFilename(): Promise<string | null> {
-  const { useConfig } = (await prompt([
-    {
-      type: 'confirm',
-      name: 'useConfig',
-      message:
-        'Do you want to use an external configuration to pre-fill fields?',
-      default: false,
-    },
-  ])) as { useConfig: boolean };
-
+export async function requestConfig() {
+  const useConfig = await confirm({
+    message: 'Do you want to use an external configuration to pre-fill fields?',
+  });
   if (!useConfig) return null;
 
-  const filename = await requestFile({
-    extension: 'json',
-    message: 'Select config file',
-  });
+  const filename = await requestFile('json', { message: 'Select config file' });
+  const config = JSON.parse(fs.readFileSync(filename, 'utf-8'));
 
-  return filename;
-}
-
-interface RequestSheetsOptions {
-  sheetNames: Array<string>;
-  defaultSheets?: Array<string>;
+  return config;
 }
 
 /**
  * Request sheets to process from the user
  *
  * @param sheetNames - available sheets
+ * @param defaultSheets - subset of `sheetNames` selected by default
  * @returns selected sheets
  */
-async function requestSheets({
-  sheetNames,
-  defaultSheets,
-}: RequestSheetsOptions): Promise<Array<string>> {
+export async function requestSheets(
+  sheetNames: Array<string>,
+  defaultSheets: Array<string>
+) {
   const { selectedSheets } = (await prompt([
     {
       type: 'checkbox',
@@ -160,73 +137,33 @@ async function requestSheets({
   return selectedSheets;
 }
 
-interface RequestFormatOptions {
-  defaultValue: boolean;
-}
-
-/**
- * Check the number format
- *
- * @returns true if number should be formatted
- */
-async function requestFormat({
-  defaultValue = false,
-}: RequestFormatOptions): Promise<boolean> {
-  const { isGermanFormat } = (await prompt([
-    {
-      type: 'confirm',
-      name: 'isGermanFormat',
-      message:
-        'Are numbers formatted in German and do you want them to be converted to English-style numbers?',
-      default: defaultValue,
-    },
-  ])) as { isGermanFormat: boolean };
-  return isGermanFormat;
-}
-
-interface RequestColumnNamesOptions {
-  sheetName: string;
-  header: Table<string>;
-  color: typeof ForegroundColor;
-  prevColNames?: Array<string>;
-  defaultColNames?: Array<string>;
-}
-
 /**
  * Ask the user to specify column names for a sheet
  *
  * @param sheetName - name of the sheet
  * @param header - table with headings
  * @param color - to highlight sheet name
+ * @param defaultColNames - column names selected by default
  * @param prevColNames - previously chosen column names
  * @returns column names
  */
-async function requestColumnNames({
-  sheetName,
-  header,
-  color = 'green',
-  prevColNames,
-  defaultColNames,
-}: RequestColumnNamesOptions): Promise<Array<string>> {
-  const c = (text: string): string => chalk[color](text);
-
+export async function requestColumnNames(
+  sheetName: string,
+  header: Table<string>,
+  color: (text: string) => string = chalk.green,
+  defaultColNames: Array<string>,
+  prevColNames?: Array<string>
+) {
   console.log();
 
   // reuse column names from the previous table?
-  const { usePrevColNames } = (await prompt([
-    {
-      type: 'confirm',
-      name: 'usePrevColNames',
-      message: c(
-        'Do you want to reuse the column names you assigned to the previous table?'
-      ),
-      default: false,
-      prefix: c('?'),
-      when() {
-        return !defaultColNames && prevColNames;
-      },
-    },
-  ])) as { usePrevColNames: boolean };
+  const usePrevColNames = await confirm({
+    message: color(
+      'Do you want to reuse the column names you assigned to the previous table?'
+    ),
+    prefix: color('?'),
+    when: () => !defaultColNames && prevColNames,
+  });
 
   if (usePrevColNames && prevColNames) return prevColNames;
 
@@ -245,12 +182,12 @@ async function requestColumnNames({
         type: 'input',
         name: `colName-${j}`,
         message:
-          c(sheetName + ': ') +
+          color(sheetName + ': ') +
           `Name of column #${String(j + 1).padStart(2, '0')}`,
         default: defaultValue,
-        prefix: c('?'),
+        prefix: color('?'),
         suffix: ' (Type "no" to ignore)',
-        filter: (colName: string): string =>
+        filter: (colName: string) =>
           colName.toLowerCase() === 'no'
             ? chalk.dim.italic('ignored')
             : colName,
@@ -258,7 +195,7 @@ async function requestColumnNames({
     });
 
   // transform answers into column names
-  const answers = (await prompt(requests)) as { [key: string]: string };
+  const answers = (await prompt(requests)) as Record<string, string>;
   const indexedAnswers = Object.entries(answers).map(
     ([key, value]: [string, string]): [number, string] => [
       +key.replace('colName-', ''),
@@ -271,78 +208,4 @@ async function requestColumnNames({
   const colNames = indexedAnswers.map(([, value]) => value);
 
   return colNames;
-}
-
-interface RequestOutFileOptions {
-  filename: string;
-  sheetName: string;
-  color: typeof ForegroundColor;
-  defaultFilename?: string;
-}
-
-/**
- * Request name of a result file from user for a specific sheet
- *
- * @param filename name of the original Excel file
- * @param sheetName name of the sheet
- * @param color message color
- * @returns name of the result file
- */
-async function requestOutFile({
-  filename,
-  sheetName,
-  color = 'green',
-  defaultFilename,
-}: RequestOutFileOptions): Promise<string> {
-  const c = (text: string): string => chalk[color](text);
-
-  const suffix = sheetName
-    .replace('/', '-')
-    .replace(' - ', '-')
-    .replace(' ', '-');
-
-  const { out } = (await prompt([
-    {
-      type: 'input',
-      name: 'out',
-      message: c(sheetName + ':') + ' Name of result file',
-      default:
-        defaultFilename ||
-        `${filename.replace(path.extname(filename), '')}_${suffix}.csv`,
-      prefix: c('?'),
-    },
-  ])) as { out: string };
-  return out;
-}
-
-interface RequestOutConfigFileOptions {
-  filename: string;
-  defaultFilename?: string;
-}
-
-async function requestOutConfigFile({
-  filename,
-  defaultFilename,
-}: RequestOutConfigFileOptions): Promise<string> {
-  console.log();
-
-  const { out } = (await prompt([
-    {
-      type: 'confirm',
-      name: 'saveConfig',
-      message: 'Do you want to save the specified configuration?',
-      default: false,
-    },
-    {
-      type: 'input',
-      name: 'out',
-      message: 'Name of the config file',
-      default:
-        defaultFilename ||
-        `${filename.replace(path.extname(filename), '')}.json`,
-      when: ({ saveConfig }) => saveConfig,
-    },
-  ])) as { saveConfig: boolean; out: string };
-
-  return out;
 }

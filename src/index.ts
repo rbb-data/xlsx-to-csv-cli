@@ -1,7 +1,15 @@
 import fs from 'fs';
 import xlsx from 'xlsx';
+import chalk from 'chalk';
 
-import request from './lib/request';
+import {
+  requestFile,
+  requestConfig,
+  requestSheets,
+  confirm,
+  requestColumnNames,
+  requestString,
+} from './lib/request';
 import * as utils from './lib/utils';
 
 import { Row, Table } from './types';
@@ -69,35 +77,29 @@ function split<T>(table: Table<T>): { data: Table<T>; header: Table<T> } {
 
 async function main() {
   // ask for excel file
-  let cfg = await request('filename');
-  const { filename } = cfg as { filename: string };
+  const filename = await requestFile('xlsx');
 
   // ask for config file
-  cfg = await request('configFilename', cfg);
-  if (cfg.configFilename) {
-    const externalConfig = JSON.parse(
-      fs.readFileSync(cfg.configFilename, 'utf-8')
-    );
-    cfg = { ...externalConfig, ...cfg };
-  }
+  let config = (await requestConfig()) || {};
 
   // get sheets to process
   const workbook = xlsx.readFile(filename);
   const { SheetNames: sheetNames } = workbook;
-  cfg = await request('sheets', cfg, {
-    sheetNames,
-    defaultSheets: cfg.sheets,
-  });
-  const { sheets: selectedSheets } = cfg as { sheets: Array<string> };
+  const sheets = await requestSheets(sheetNames, config.sheets);
 
   // number format
-  cfg = await request('isGermanFormat', cfg, {
-    defaultValue: cfg.isGermanFormat || false,
+  const isGermanFormat = await confirm({
+    message:
+      'Are numbers formatted in German and do you want them to be converted to English-style numbers?',
+    default: config.isGermanFormat || false,
   });
 
   let prevColNames;
-  for (let sheetNum = 0; sheetNum < selectedSheets.length; sheetNum++) {
-    const sheetName = selectedSheets[sheetNum];
+  const colNames: Record<string, Array<string>> = {};
+  const out: Record<string, string> = {};
+  for (let sheetNum = 0; sheetNum < sheets.length; sheetNum++) {
+    const sheetName = sheets[sheetNum];
+    const color = chalk[sheetNum % 2 === 0 ? 'green' : 'yellow'];
 
     // grab sheet data from excel
     let sheet = workbook.Sheets[sheetName];
@@ -112,14 +114,10 @@ async function main() {
             typeof cell.v === 'string'
               ? utils.removeLineBreaks(cell.v)
               : cell.v;
-      } else if (cfg.isGermanFormat && cell.t === 'n') {
+      } else if (isGermanFormat && cell.t === 'n') {
         // convert to English formatting style
         if (cell.w) {
-          cell.w = cell.w
-            // @ is just a temporary placeholder
-            .replaceAll(',', '@')
-            .replaceAll('.', ',')
-            .replaceAll('@', '.');
+          cell.w = utils.toEnglishFormat(cell.w);
           if (cell.v) cell.v = +cell.w;
         }
       }
@@ -146,55 +144,59 @@ async function main() {
     let { data } = splitTable;
 
     // get column names from the user
-    const color = sheetNum % 2 === 0 ? 'green' : 'yellow';
-    cfg = await request('colNames', cfg, {
+    colNames[sheetName] = (await requestColumnNames(
       sheetName,
       header,
       color,
-      prevColNames,
-      defaultColNames: cfg.colNamesPerSheet
-        ? cfg.colNamesPerSheet[sheetName]
-        : undefined,
-    });
-    const { colNames } = cfg as { colNames: Array<string> };
-    prevColNames = colNames;
-
-    // write column names to config permanently
-    if (!cfg.colNamesPerSheet) cfg.colNamesPerSheet = {};
-    cfg.colNamesPerSheet[sheetName] = colNames;
-    delete cfg.colNames;
+      config.colNames ? config.colNames[sheetName] : undefined,
+      prevColNames
+    )) as Array<string>;
+    prevColNames = colNames[sheetName];
 
     // add column names to data and remove columns to ignore
-    data.unshift(colNames);
+    data.unshift(colNames[sheetName]);
     data = utils.transpose(
       utils
         .transpose(data)
         .filter((row: Row<string>): boolean => !row[0].includes('ignored'))
     );
 
-    // save tabular data to csv file
-    cfg = await request('out', cfg, {
-      filename,
-      sheetName,
-      color,
-      defaultFilename: cfg.outPerSheet ? cfg.outPerSheet[sheetName] : undefined,
+    // save to csv file
+    out[sheetName] = await requestString({
+      message: color(sheetName + ':') + ' Name of result file',
+      default: config.out
+        ? config.out[sheetName]
+        : utils.replaceExtension(
+            filename,
+            `_${utils.normalize(sheetName)}.csv`
+          ),
+      prefix: color('?'),
     });
-    const { out } = cfg as { out: string };
-    fs.writeFileSync(out, utils.toCsv(data));
-
-    // write out filename to config permanently
-    if (!cfg.outPerSheet) cfg.outPerSheet = {};
-    cfg.outPerSheet[sheetName] = out;
-    delete cfg.out;
+    fs.writeFileSync(out[sheetName], utils.toCsv(data));
   }
 
-  // save config to file
-  cfg = await request('configOut', cfg, {
+  // update config
+  config = {
+    ...config,
     filename,
-    defaultFilename: cfg.configOut,
+    sheets,
+    isGermanFormat,
+    colNames,
+    out,
+  };
+
+  // save config to file
+  console.log();
+  const saveConfig = await confirm({
+    message: 'Do you want to save the specified configuration?',
   });
-  if (cfg.configOut)
-    fs.writeFileSync(cfg.configOut, JSON.stringify(cfg, null, 2));
+  if (saveConfig) {
+    const configOut = await requestString({
+      message: 'Name of the config file',
+      default: utils.replaceExtension(filename, '.json'),
+    });
+    fs.writeFileSync(configOut, JSON.stringify(config, null, 2));
+  }
 }
 
 (async () => {

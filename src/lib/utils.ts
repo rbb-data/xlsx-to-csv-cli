@@ -1,3 +1,5 @@
+import path from 'path';
+
 import { Row, Table } from '../types';
 
 /**
@@ -109,4 +111,36 @@ export function toCsv(table: Table<string>): string {
  */
 export function removeLineBreaks(str: string): string {
   return str.replaceAll('\n', ' ').replaceAll('\r', '');
+}
+
+/**
+ * Replace extension of `filename` with `suffix`
+ *
+ * @param filename - path to file
+ * @param suffix - suffix to add to `filename`
+ * @returns `filename` with `suffix` appended
+ */
+export function replaceExtension(filename: string, suffix: string) {
+  return `${filename.replace(path.extname(filename), '')}${suffix}`;
+}
+
+/**
+ * Convert German to English number format
+ *
+ * @param str - string containing numbers in German format
+ * @returns string containing numbers in English format
+ */
+export function toEnglishFormat(str: string) {
+  // @ is just a temporary placeholder
+  return str.replaceAll(',', '@').replaceAll('.', ',').replaceAll('@', '.');
+}
+
+/**
+ * Remove characters problematic for file paths
+ *
+ * @param str - any string
+ * @returns string that can be used as path
+ */
+export function normalize(str: string) {
+  return str.replaceAll('/', '-').replaceAll(' - ', '-').replaceAll(' ', '-');
 }
