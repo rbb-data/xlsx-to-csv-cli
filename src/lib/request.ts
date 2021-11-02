@@ -184,7 +184,7 @@ export async function requestColumnNames(
         message:
           color(sheetName + ': ') +
           `Name of column #${String(j + 1).padStart(2, '0')}`,
-        default: defaultValue,
+        default: defaultValue || `col_${j + 1}`,
         prefix: color('?'),
         suffix: ' (Type "-" to ignore)',
         filter: (colName: string) =>
