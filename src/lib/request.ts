@@ -186,11 +186,9 @@ export async function requestColumnNames(
           `Name of column #${String(j + 1).padStart(2, '0')}`,
         default: defaultValue,
         prefix: color('?'),
-        suffix: ' (Type "no" to ignore)',
+        suffix: ' (Type "-" to ignore)',
         filter: (colName: string) =>
-          colName.toLowerCase() === 'no'
-            ? chalk.dim.italic('ignored')
-            : colName,
+          colName.toLowerCase() === '-' ? chalk.dim.italic('ignored') : colName,
       };
     });
 
