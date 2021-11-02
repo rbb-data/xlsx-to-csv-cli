@@ -47,21 +47,30 @@ function transformCells(
  * @param table - 2d matrix
  * @returns - two tables containing data and the head of the table resp.
  */
-function split<T>(table: Table<T>): { data: Table<T>; header: Table<T> } {
+function split(table: Table<string>): {
+  data: Table<string>;
+  header: Table<string>;
+} {
   if (table.length === 0) return { header: [], data: [] };
 
   const nRows = table.length;
   const nCols = table[0].length;
 
-  const findStartIndex = (table: Table<T>): number | null => {
+  const findStartIndex = (
+    table: Table<string>,
+    requireNumber = false
+  ): number | null => {
     const idx = table.findIndex(
-      (row) => row.filter((cell) => cell).length === nCols
+      (row) =>
+        row.filter((cell) => cell).length === nCols &&
+        (!requireNumber ||
+          row.some((cell) => !Number.isNaN(+cell.replaceAll(',', ''))))
     );
     return idx >= 0 ? idx : null;
   };
 
   // the first complete row marks the beginning of the data
-  const firstRow = findStartIndex(table) || 0;
+  const firstRow = findStartIndex(table, true) || 0;
 
   // the last complete row marks the end of the data
   const lastRow = nRows - 1 - (findStartIndex([...table].reverse()) || 0);
