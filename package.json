@@ -3,11 +3,18 @@
   "version": "0.1.0",
   "description": "Interactive command line interface to export CSV files from an Excel workbook",
   "scripts": {
-    "start": "tsc && node build/index.js",
+    "start": "tsc && node build/cli.js",
+    "build": "tsc --outDir dist",
     "lint": "npm run lint:eslint && npm run lint:prettier",
     "lint:eslint": "eslint --fix 'src/**/*.ts'",
     "lint:prettier": "prettier --write src"
   },
+  "bin": {
+    "xlsx-to-csv": "dist/cli.js"
+  },
+  "files": [
+    "dist/**/*.js"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/sophiamersmann/xlsx-to-csv-cli.git"
@@ -34,5 +41,11 @@
     "eslint-config-prettier": "^8.3.0",
     "prettier": "2.4.1",
     "typescript": "^4.4.4"
-  }
+  },
+  "keywords": [
+    "excel",
+    "xlsx",
+    "csv",
+    "cli"
+  ]
 }
