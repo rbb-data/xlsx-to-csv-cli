@@ -1,6 +1,6 @@
 {
   "name": "xlsx-to-csv-cli",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Interactive command line interface to export CSV files from an Excel workbook",
   "scripts": {
     "start": "tsc && node build/cli.js",
