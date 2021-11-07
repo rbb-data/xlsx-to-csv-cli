@@ -9,9 +9,6 @@ import { Row, Table, Question } from '../types';
 
 inquirer.registerPrompt('fuzzypath', inquirerFuzzyPath);
 
-// TODO: update doc
-// TODO: check for unnecessary type annotations
-
 /**
  * Asks the user a collection of questions
  *
